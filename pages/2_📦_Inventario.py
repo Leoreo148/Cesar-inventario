@@ -53,21 +53,28 @@ def cargar_todo():
     return pd.DataFrame(p.data), pd.DataFrame(i.data), pd.DataFrame(s.data)
 
 def generar_kardex(df_p, df_i, df_s):
-    # 1. Si ni siquiera hay productos en el catálogo, devolvemos un DF vacío con las columnas necesarias
+    # 1. Si no hay productos, creamos un cascarón vacío pero con "huesos" (columnas)
     if df_p.empty: 
-        return pd.DataFrame(columns=['Codigo', 'Producto', 'Stock_Lote', 'Valorizado_PEN', 'Dias_para_Vencer', 'Unidad'])
+        return pd.DataFrame(columns=['Codigo', 'Producto', 'Stock_Lote', 'Valorizado_PEN', 'Dias_para_Vencer', 'Unidad', 'Stock_Minimo', 'Tipo_Accion'])
     
-    # Limpieza básica de stock mínimo
-    df_p['Stock_Minimo'] = df_p.get('Stock_Minimo', 0.0).fillna(0.0)
+    # 🛡️ EMERGENCIA: Si por alguna razón falta la columna Stock_Minimo en Supabase, la creamos aquí
+    if 'Stock_Minimo' not in df_p.columns:
+        df_p['Stock_Minimo'] = 0.0
     
-    # 2. Si no hay ingresos (almacén vacío), creamos las columnas de cálculo en 0
-    if df_i.empty:
-        df_final = df_p.copy()
-        df_final['Stock_Lote'] = 0.0
-        df_final['Valorizado_PEN'] = 0.0
-        df_final['Dias_para_Vencer'] = 999
-        df_final['Codigo_Lote'] = "SIN LOTES"
-        return df_final
+    df_p['Stock_Minimo'] = df_p['Stock_Minimo'].fillna(0.0)
+    
+    # ... (el resto del código de ingresos y balance que ya tenías) ...
+
+    # Al final, antes del return, asegúrate de que el merge no haya borrado nada
+    df_final = pd.merge(df_balance, df_p, left_on='Codigo_Producto', right_on='Codigo', how='right')
+    
+    # Forzamos que las columnas críticas existan tras el merge
+    for col in ['Stock_Lote', 'Valorizado_PEN', 'Stock_Minimo']:
+        if col not in df_final.columns:
+            df_final[col] = 0.0
+        df_final[col] = df_final[col].fillna(0.0)
+        
+    return df_final
 
     # --- Lógica de saldos (esto se queda igual) ---
     if not df_s.empty:
@@ -185,9 +192,23 @@ if filtro_tipo != "Todos":
 st.write("")
 m1, m2, m3, m4 = st.columns(4)
 style_metric_cards(background_color="#ffffff", border_left_color="#1e3d33")
-m1.metric("Valorización (S/)", f"S/ {df_kardex['Valorizado_PEN'].sum():,.2f}")
-m2.metric("Alertas Stock", len(df_kardex[df_kardex['Stock_Lote'] < df_kardex['Stock_Minimo']]))
-m3.metric("Vencimientos <15d", len(df_kardex[df_kardex['Dias_para_Vencer'] < 15]))
+
+# 1. Valorización
+val_total = df_kardex['Valorizado_PEN'].sum() if 'Valorizado_PEN' in df_kardex.columns else 0.0
+m1.metric("Valorización (S/)", f"S/ {val_total:,.2f}")
+
+# 2. Alertas Stock (🛡️ AQUÍ ESTABA EL ERROR)
+if 'Stock_Lote' in df_kardex.columns and 'Stock_Minimo' in df_kardex.columns:
+    n_alertas = len(df_kardex[df_kardex['Stock_Lote'] < df_kardex['Stock_Minimo']])
+else:
+    n_alertas = 0
+m2.metric("Alertas Stock", n_alertas)
+
+# 3. Vencimientos
+n_venc = len(df_kardex[df_kardex['Dias_para_Vencer'] < 15]) if 'Dias_para_Vencer' in df_kardex.columns else 0
+m3.metric("Vencimientos <15d", n_venc)
+
+# 4. Conteo total
 m4.metric("Lotes en Vista", len(df_kardex))
 
 # --- 7. AG-GRID ---
