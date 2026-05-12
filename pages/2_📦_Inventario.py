@@ -53,27 +53,51 @@ def cargar_todo():
     return pd.DataFrame(p.data), pd.DataFrame(i.data), pd.DataFrame(s.data)
 
 def generar_kardex(df_p, df_i, df_s):
-    # 1. Si no hay productos, creamos un cascarón vacío pero con "huesos" (columnas)
+    # 🛡️ PASO 0: Inicializamos df_balance como vacío para que SIEMPRE exista el nombre
+    df_balance = pd.DataFrame() 
+
     if df_p.empty: 
         return pd.DataFrame(columns=['Codigo', 'Producto', 'Stock_Lote', 'Valorizado_PEN', 'Dias_para_Vencer', 'Unidad', 'Stock_Minimo', 'Tipo_Accion'])
     
-    # 🛡️ EMERGENCIA: Si por alguna razón falta la columna Stock_Minimo en Supabase, la creamos aquí
     if 'Stock_Minimo' not in df_p.columns:
         df_p['Stock_Minimo'] = 0.0
-    
     df_p['Stock_Minimo'] = df_p['Stock_Minimo'].fillna(0.0)
     
-    # ... (el resto del código de ingresos y balance que ya tenías) ...
+    # Si no hay ingresos, devolvemos el catálogo con ceros y salimos temprano
+    if df_i.empty:
+        df_final = df_p.copy()
+        df_final['Stock_Lote'] = 0.0
+        df_final['Valorizado_PEN'] = 0.0
+        df_final['Dias_para_Vencer'] = 999
+        df_final['Codigo_Lote'] = "SIN LOTES"
+        return df_final
 
-    # Al final, antes del return, asegúrate de que el merge no haya borrado nada
+    # 🚀 Si hay ingresos, calculamos el balance
+    if not df_s.empty:
+        # Sumamos lo gastado por cada ingreso
+        gastado = df_s.groupby('Ingreso_ID')['Cantidad_Usada'].sum().reset_index()
+        # Unimos ingresos con sus gastos
+        df_balance = pd.merge(df_i, gastado, left_on='id', right_on='Ingreso_ID', how='left').fillna({'Cantidad_Usada': 0})
+        df_balance['Stock_Lote'] = df_balance['Cantidad_Ingresada'] - df_balance['Cantidad_Usada']
+    else:
+        # Si no hay ninguna salida registrada, el stock es igual al ingreso
+        df_balance = df_i.copy()
+        df_balance['Stock_Lote'] = df_balance['Cantidad_Ingresada']
+
+    # 🔗 UNIÓN FINAL: Ahora sí, df_balance existe sí o sí
     df_final = pd.merge(df_balance, df_p, left_on='Codigo_Producto', right_on='Codigo', how='right')
     
-    # Forzamos que las columnas críticas existan tras el merge
-    for col in ['Stock_Lote', 'Valorizado_PEN', 'Stock_Minimo']:
-        if col not in df_final.columns:
-            df_final[col] = 0.0
-        df_final[col] = df_final[col].fillna(0.0)
-        
+    # Limpieza de nulos tras el merge
+    df_final['Stock_Lote'] = df_final['Stock_Lote'].fillna(0.0)
+    df_final['Precio_Unitario_PEN'] = pd.to_numeric(df_final['Precio_Unitario_PEN'], errors='coerce').fillna(0.0)
+    df_final['Valorizado_PEN'] = df_final['Stock_Lote'] * df_final['Precio_Unitario_PEN']
+    
+    # Fechas
+    hoy = pd.Timestamp(date.today())
+    df_final['Venc_Date'] = pd.to_datetime(df_final['Fecha_Vencimiento'], errors='coerce')
+    df_final['Dias_para_Vencer'] = (df_final['Venc_Date'] - hoy).dt.days
+    df_final.loc[df_final['Venc_Date'].isnull() | (df_final['Venc_Date'].dt.year < 2000), 'Dias_para_Vencer'] = 999
+    
     return df_final
 
     # --- Lógica de saldos (esto se queda igual) ---
