@@ -130,8 +130,13 @@ with stylable_container(key="green_panel", css_styles="{ background-color: #1e3d
     with c1:
         busqueda = st.text_input("🔍 Buscador:", placeholder="Lote, Factura, Producto...")
     with c2:
-        tipos_raw = df_kardex['Tipo_Accion'].unique()
-        tipos_limpios = sorted([str(t) for t in tipos_raw if t and str(t) not in ['0', 'nan', 'None']])
+        # 🛡️ Shield: Verificamos si la columna existe antes de pedir los valores únicos
+        if 'Tipo_Accion' in df_kardex.columns:
+            tipos_raw = df_kardex['Tipo_Accion'].unique()
+            tipos_limpios = sorted([str(t) for t in tipos_raw if t and str(t) not in ['0', 'nan', 'None']])
+        else:
+            tipos_limpios = []
+            
         filtro_tipo = st.selectbox("Categoría:", ["Todos"] + tipos_limpios)
     with c3:
         cols_detalle = ['Proveedor', 'Factura', 'Guia_Remision', 'Deposito', 'Precio_Unitario_PEN', 'Precio_Unitario_USD', 'Ingrediente_Activo', 'Observaciones']
@@ -154,7 +159,9 @@ m3.metric("Vencimientos <15d", len(df_kardex[df_kardex['Dias_para_Vencer'] < 15]
 m4.metric("Lotes en Vista", len(df_kardex))
 
 # --- 7. AG-GRID ---
-cols_visibles = ['Codigo', 'Producto', 'Clase_ABC', 'Codigo_Lote', 'Stock_Lote', 'Unidad'] + mostrar_extras + ['Dias_para_Vencer']
+# Creamos una lista de columnas que REALMENTE existen en el DataFrame para evitar el KeyError
+cols_base = ['Codigo', 'Producto', 'Clase_ABC', 'Codigo_Lote', 'Stock_Lote', 'Unidad', 'Dias_para_Vencer']
+cols_visibles = [c for c in cols_base if c in df_kardex.columns] + mostrar_extras
 
 if not df_kardex.empty:
     gb = GridOptionsBuilder.from_dataframe(df_kardex[cols_visibles])
