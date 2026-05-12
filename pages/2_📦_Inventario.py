@@ -53,16 +53,48 @@ def cargar_todo():
     return pd.DataFrame(p.data), pd.DataFrame(i.data), pd.DataFrame(s.data)
 
 def generar_kardex(df_p, df_i, df_s):
-    if df_p.empty: return pd.DataFrame()
+    # 1. Si ni siquiera hay productos en el catálogo, devolvemos un DF vacío con las columnas necesarias
+    if df_p.empty: 
+        return pd.DataFrame(columns=['Codigo', 'Producto', 'Stock_Lote', 'Valorizado_PEN', 'Dias_para_Vencer', 'Unidad'])
     
-    # Limpieza básica
+    # Limpieza básica de stock mínimo
     df_p['Stock_Minimo'] = df_p.get('Stock_Minimo', 0.0).fillna(0.0)
     
+    # 2. Si no hay ingresos (almacén vacío), creamos las columnas de cálculo en 0
     if df_i.empty:
         df_final = df_p.copy()
-        df_final[['Stock_Lote', 'Valorizado_PEN']] = 0.0
+        df_final['Stock_Lote'] = 0.0
+        df_final['Valorizado_PEN'] = 0.0
         df_final['Dias_para_Vencer'] = 999
+        df_final['Codigo_Lote'] = "SIN LOTES"
         return df_final
+
+    # --- Lógica de saldos (esto se queda igual) ---
+    if not df_s.empty:
+        gastado = df_s.groupby('Ingreso_ID')['Cantidad_Usada'].sum().reset_index()
+        df_balance = pd.merge(df_i, gastado, left_on='id', right_on='Ingreso_ID', how='left').fillna({'Cantidad_Usada': 0})
+        df_balance['Stock_Lote'] = df_balance['Cantidad_Ingresada'] - df_balance['Cantidad_Usada']
+    else:
+        df_balance = df_i.copy()
+        df_balance['Stock_Lote'] = df_balance['Cantidad_Ingresada']
+
+    # Merge con catálogo
+    df_final = pd.merge(df_balance, df_p, left_on='Codigo_Producto', right_on='Codigo', how='right')
+    
+    # 🛡️ Aseguramos que Precio_Unitario_PEN sea numérico y no tenga NaNs antes de multiplicar
+    df_final['Precio_Unitario_PEN'] = pd.to_numeric(df_final['Precio_Unitario_PEN'], errors='coerce').fillna(0.0)
+    df_final['Stock_Lote'] = df_final['Stock_Lote'].fillna(0.0)
+    
+    # AQUÍ SE CREA LA COLUMNA SÍ O SÍ
+    df_final['Valorizado_PEN'] = df_final['Stock_Lote'] * df_final['Precio_Unitario_PEN']
+    
+    # Procesamiento de fechas (igual que antes...)
+    hoy = pd.Timestamp(date.today())
+    df_final['Venc_Date'] = pd.to_datetime(df_final['Fecha_Vencimiento'], errors='coerce')
+    df_final['Dias_para_Vencer'] = (df_final['Venc_Date'] - hoy).dt.days
+    df_final.loc[df_final['Venc_Date'].isnull() | (df_final['Venc_Date'].dt.year < 2000), 'Dias_para_Vencer'] = 999
+    
+    return df_final
 
     # Cálculo de saldos
     if not df_s.empty:
