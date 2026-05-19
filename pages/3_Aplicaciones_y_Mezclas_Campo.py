@@ -21,17 +21,44 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- 3. CARGA DE DATOS RELACIONALES ---
+# --- 3. CARGA DE DATOS RELACIONALES (Blindado contra errores de Esquema) ---
 @st.cache_data(ttl=60)
 def cargar_catalogos():
-    pers = supabase.table('Personal').select("id, nombre_completo").eq('activo', True).execute()
-    maq = supabase.table('Maquinaria').select("id, nombre").execute()
-    prod = supabase.table('Productos').select("Codigo, Producto, Unidad").execute()
-    ing = supabase.table('Ingresos').select("id, Codigo_Producto, Codigo_Lote, Cantidad_Ingresada, Precio_Unitario_PEN").execute()
-    sal = supabase.table('Salidas').select("*").execute()
-    ord_ = supabase.table('Ordenes_de_Trabajo').select("*").order('created_at', desc=True).execute()
+    # Inicializamos listas vacías por seguridad
+    d_pers, d_maq, d_prod, d_ing, d_sal, d_ord = [], [], [], [], [], []
+    
+    # Probamos cada consulta de forma independiente para aislar el error
+    try:
+        d_pers = supabase.table('Personal').select("id, nombre_completo").eq('activo', True).execute().data
+    except Exception as e:
+        st.error(f"❌ Error en Tabla 'Personal': {e}. Revisa si la tabla o la columna 'activo' existen en Supabase.")
+        
+    try:
+        d_maq = supabase.table('Maquinaria').select("id, nombre").execute().data
+    except Exception as e:
+        st.error(f"❌ Error en Tabla 'Maquinaria': {e}")
+        
+    try:
+        d_prod = supabase.table('Productos').select("Codigo, Producto, Unidad").execute().data
+    except Exception as e:
+        st.error(f"❌ Error en Tabla 'Productos': {e}")
+        
+    try:
+        d_ing = supabase.table('Ingresos').select("id, Codigo_Producto, Codigo_Lote, Cantidad_Ingresada, Precio_Unitario_PEN").execute().data
+    except Exception as e:
+        st.error(f"❌ Error en Tabla 'Ingresos': {e}")
+        
+    try:
+        d_sal = supabase.table('Salidas').select("*").execute().data
+    except Exception as e:
+        st.error(f"❌ Error en Tabla 'Salidas': {e}")
+        
+    try:
+        d_ord = supabase.table('Ordenes_de_Trabajo').select("*").order('created_at', desc=True).execute().data
+    except Exception as e:
+        st.error(f"❌ Error en Tabla 'Ordenes_de_Trabajo': {e}")
 
-    return pd.DataFrame(pers.data), pd.DataFrame(maq.data), pd.DataFrame(prod.data), pd.DataFrame(ing.data), pd.DataFrame(sal.data), pd.DataFrame(ord_.data)
+    return pd.DataFrame(d_pers), pd.DataFrame(d_maq), pd.DataFrame(d_prod), pd.DataFrame(d_ing), pd.DataFrame(d_sal), pd.DataFrame(d_ord)
 
 df_pers, df_maq, df_prod, df_ing, df_sal, df_ord = cargar_catalogos()
 
