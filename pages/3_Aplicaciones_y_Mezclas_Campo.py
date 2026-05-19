@@ -3,15 +3,6 @@ import pandas as pd
 from datetime import datetime, date
 from supabase import create_client
 
-# 🚨 CANDADO VIP: EXCLUSIVO PARA ALMACÉN
-if "autenticado" not in st.session_state or not st.session_state["autenticado"]:
-    st.warning("⚠️ Por favor, inicie sesión en la página principal.")
-    st.stop()
-
-if st.session_state["rol"] not in ["Admin", "Logistica","Programador"]:
-    st.error("🚫 Acceso denegado. Este módulo es exclusivo para el área de Almacén.")
-    st.stop()
-
 # --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
 st.set_page_config(page_title="Gestión de Aplicaciones - Fundo", page_icon="🚁", layout="wide")
 
