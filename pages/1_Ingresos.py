@@ -122,7 +122,7 @@ def modal_crear_producto():
                         "Codigo": n_cod.strip().upper(), 
                         "Producto": n_nom.strip().upper(), 
                         "Unidad": n_uni, 
-                        "Tipo_Accion": n_tipo,
+                        "Tipo_Accion": ", ".join(n_tipo) if n_tipo else "Otro",
                         "Marca": n_marca.strip().upper() if n_marca else None,
                         "Ingrediente_Activo": ingredientes_limpios,
                         "Formulacion": n_form,

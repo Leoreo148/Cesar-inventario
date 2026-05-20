@@ -317,6 +317,15 @@ if st.session_state.editing_product_id:
                 n_min = c1.number_input("Stock Mínimo", value=float(p.get('Stock_Minimo', 0)))
                 n_car = c2.number_input("Carencia (Días)", value=int(p.get('Periodo_Carencia_Dias', 0)))
                 
+                # 💡 NUEVO: Lógica inversa. Convierte "Insecticida, Acaricida" de vuelta a lista
+                CATEGORIAS = ["Insecticida", "Acaricida", "Fungicida", "Bactericida", "Herbicida", "Defoliante", "Coadyuvante", "Regulador de pH", "Nematicida", "Foliar", "Fertilizante", "Otro", "N/A"]
+                tipo_actual_str = str(p.get('Tipo_Accion', ''))
+                # Limpiamos el string viejo y sacamos los válidos
+                tipos_previos = [t.strip() for t in tipo_actual_str.split(',')] if tipo_actual_str and tipo_actual_str not in ['nan', 'None'] else []
+                tipos_validos = [t for t in tipos_previos if t in CATEGORIAS]
+                
+                n_tipo = c3.multiselect("Categoría", CATEGORIAS, default=tipos_validos)
+                
                 CATEGORIAS = ["Insecticida", "Acaricida", "Fungicida", "Herbicida", "Coadyuvante", "Regulador de pH", "Nematicida", "Foliar", "Fertilizante", "Otro", "N/A"]
                 tipo_actual = str(p.get('Tipo_Accion', 'N/A'))
                 idx_tipo = CATEGORIAS.index(tipo_actual) if tipo_actual in CATEGORIAS else 10
@@ -350,7 +359,7 @@ if st.session_state.editing_product_id:
                         "Ingrediente_Activo": ing_limpios,
                         "Stock_Minimo": n_min, 
                         "Periodo_Carencia_Dias": n_car, 
-                        "Tipo_Accion": n_tipo,
+                        "Tipo_Accion": ", ".join(n_tipo) if n_tipo else "N/A",  # <-- ASÍ SE GUARDA
                         "Formulacion": n_form,
                         "Banda_Toxicologica": n_banda,
                         "Ficha_Tecnica_URL": n_ficha.strip() if n_ficha else None,
