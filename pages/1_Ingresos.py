@@ -3,14 +3,23 @@ import pandas as pd
 from datetime import datetime, date
 from typing import Optional
 from pydantic import BaseModel, ValidationError, field_validator
-from supabase import create_client, Client
-from st_aggrid import AgGrid, GridOptionsBuilder, ColumnsAutoSizeMode
+from supabase import create_client
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from streamlit_extras.stylable_container import stylable_container
+
+# 🚨 CANDADO VIP: EXCLUSIVO PARA ALMACÉN
+if "autenticado" not in st.session_state or not st.session_state["autenticado"]:
+    st.warning("⚠️ Por favor, inicie sesión en la página principal.")
+    st.stop()
+
+# Aquí bloqueamos a José de Sanidad o a Edgar de Costos
+if st.session_state["rol"] not in ["Admin", "Logistica","Programador"]:
+    st.error("🚫 Acceso denegado. Este módulo es exclusivo para el área de Almacén y Mezclas (Miguel).")
+    st.stop()
 
 # --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
 st.set_page_config(page_title="Gestión de Ingresos Pro", page_icon="📥", layout="wide")
 
-# Inyectamos CSS para suavizar el blanco y mejorar el contraste
 st.markdown("""
     <style>
     .stApp { background-color: #f4f7f6; }
@@ -25,7 +34,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. ESQUEMA DE DATOS AUDITADO (Basado en Excel) ---
+# --- 2. ESQUEMA DE DATOS AUDITADO ---
 class IngresoSchema(BaseModel):
     Codigo_Producto: str
     Codigo_Lote: str
@@ -37,7 +46,10 @@ class IngresoSchema(BaseModel):
     Factura: Optional[str] = None
     Guia_Remision: Optional[str] = None      
     Observaciones: Optional[str] = None       
-    Responsable: Optional[str] = None # <-- NUEVO CAMPO DE AUDITORÍA
+    Responsable: Optional[str] = None 
+    # --- NUEVOS CAMPOS DE CONTROL ---
+    Estado_Registro: Optional[str] = "Completo 🟢" 
+    Motivo_Anulacion: Optional[str] = None
 
     @field_validator('Cantidad_Ingresada', 'Precio_Unitario_PEN')
     def must_be_positive(cls, v):
@@ -74,7 +86,7 @@ def get_history():
 # --- 5. INTERFAZ DE USUARIO ---
 with stylable_container(key="title_container", css_styles="""{ background-color: #1e3d33; color: white; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; }"""):
     st.title("📥 Registro Maestro de Ingresos")
-    st.write("Auditoría de almacén y control de compras.")
+    st.write("Auditoría de almacén, control de compras y recepciones provisionales.")
 df_p = get_products()
 
 # --- DIÁLOGO PARA CREAR PRODUCTO NUEVO ---
@@ -82,33 +94,61 @@ df_p = get_products()
 def modal_crear_producto():
     st.write("Crea el 'molde' del producto antes de ingresarlo al almacén.")
     with st.form("form_crear_maestro"):
-        c_mod1, c_mod2 = st.columns(2)
-        n_cod = c_mod1.text_input("Código (Ej: A260)", help="Debe ser único")
-        n_nom = c_mod2.text_input("Nombre del Producto")
+        st.markdown("**1. Datos Generales**")
+        c_mod1, c_mod2, c_mod3 = st.columns([1.5, 2, 1.5])
+        n_cod = c_mod1.text_input("Código (Ej: A260)*", help="Debe ser único")
+        n_nom = c_mod2.text_input("Nombre Comercial*")
+        n_marca = c_mod3.text_input("Marca / Laboratorio")
         
-        c_mod3, c_mod4 = st.columns(2)
-        n_uni = c_mod3.selectbox("Unidad de Medida", ["001", "002"], help="001=Lt | 002=Kg")
-        n_tipo = c_mod4.selectbox("Categoría", ["Fungicida y Bactericida", "Insecticida y Acaricida", "Fertilizante", "Agroquímicos", "Herbicida", "Otro"])
+        # --- NUEVO: Ingrediente Activo Inteligente ---
+        n_ingrediente = st.text_input("Ingrediente(s) Activo(s)", placeholder="Ej: cymoxanil, mancozeb", help="Si tiene más de uno, sepáralos con comas.")
+        
+        st.markdown("**2. Clasificación Técnica**")
+        c_mod4, c_mod5, c_mod6 = st.columns(3)
+        
+        # Categorías exactas del Excel
+        CATEGORIAS = ["Insecticida", "Acaricida", "Fungicida", "Herbicida", "Coadyuvante", "Regulador de pH", "Nematicida", "Foliar", "Fertilizante", "Otro"]
+        n_tipo = c_mod4.selectbox("Categoría", CATEGORIAS)
+        
+        # Formulaciones comunes
+        FORMULACIONES = ["Concentrado Soluble (SL)", "Concentrado Emulsionable (EC)", "Suspensión Concentrada (SC)", "Polvo Mojable (WP)", "Gránulos Dispersables (WG)", "Otro"]
+        n_form = c_mod5.selectbox("Formulación", FORMULACIONES)
+        
+        n_uni = c_mod6.selectbox("Unidad Base", ["L", "Kg", "Gal", "Saco"])
+        
+        st.markdown("**3. Seguridad y Documentación**")
+        c_mod7, c_mod8 = st.columns(2)
+        n_banda = c_mod7.selectbox("Banda Toxicológica", ["Verde (Ligeramente Tóxico)", "Azul (Moderadamente Tóxico)", "Amarillo (Altamente Tóxico)", "Rojo (Extremadamente Tóxico)", "No Aplica"])
+        n_ficha = c_mod8.text_input("URL Ficha Técnica", placeholder="https://link-al-pdf.com...")
         
         if st.form_submit_button("Guardar en Catálogo Maestro", use_container_width=True):
             if n_cod and n_nom:
                 try:
+                    # 💡 LÓGICA INTELIGENTE: Limpieza de texto para el Ingrediente Activo
+                    # Convierte "agua , MANCOZEB" en "Agua, Mancozeb"
+                    ingredientes_limpios = ", ".join([i.strip().capitalize() for i in n_ingrediente.split(",") if i.strip()]) if n_ingrediente else None
+                    
                     nuevo_prod = {
-                        "Codigo": n_cod.strip().upper(),
-                        "Producto": n_nom.strip().upper(),
-                        "Unidad": n_uni,
-                        "Tipo_Accion": n_tipo
+                        "Codigo": n_cod.strip().upper(), 
+                        "Producto": n_nom.strip().upper(), 
+                        "Unidad": n_uni, 
+                        "Tipo_Accion": n_tipo,
+                        "Marca": n_marca.strip().upper() if n_marca else None,
+                        "Ingrediente_Activo": ingredientes_limpios,
+                        "Formulacion": n_form,
+                        "Banda_Toxicologica": n_banda,
+                        "Ficha_Tecnica_URL": n_ficha.strip() if n_ficha else None
                     }
                     supabase.table('Productos').insert(nuevo_prod).execute()
-                    st.success(f"¡{n_nom} agregado al catálogo!")
+                    st.success(f"¡{n_nom} agregado al catálogo con éxito!")
                     st.cache_data.clear()
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error (¿Código duplicado?): {e}")
             else:
-                st.warning("Código y Nombre son obligatorios.")
-
-# FORMULARIO DE REGISTRO
+                st.warning("⚠️ Código y Nombre son obligatorios.")
+                
+# FORMULARIO DE REGISTRO ORIGINAL (Intacto)
 with st.form("form_registro", clear_on_submit=True):
     st.markdown("##### 📝 Información del Producto")
     c1, c2, c3 = st.columns(3)
@@ -117,20 +157,12 @@ with st.form("form_registro", clear_on_submit=True):
         dict_productos = {}
         if not df_p.empty:
             for _, row in df_p.iterrows():
-                nombre = str(row['Producto']).strip()
-                codigo = str(row['Codigo']).strip()
+                nombre, codigo = str(row['Producto']).strip(), str(row['Codigo']).strip()
                 if nombre and nombre != 'nan':
-                    etiqueta = f"{nombre} ({codigo})"
-                    dict_productos[etiqueta] = codigo
+                    dict_productos[f"{nombre} ({codigo})"] = codigo
         
-        seleccion = st.selectbox(
-            "Seleccionar Producto", 
-            options=list(dict_productos.keys()), 
-            index=None, 
-            placeholder="🔍 Escribe para buscar..."
-        )
+        seleccion = st.selectbox("Seleccionar Producto", options=list(dict_productos.keys()), index=None, placeholder="🔍 Escribe para buscar...")
         cod_prod = dict_productos[seleccion] if seleccion else None
-        
         lote = st.text_input("Código de Lote / Batch")
     
     with c2:
@@ -143,18 +175,12 @@ with st.form("form_registro", clear_on_submit=True):
 
     st.divider()
     st.markdown("##### 🚛 Datos Logísticos y Auditoría")
-    
-    # 🛡️ Cambiamos a 4 columnas para incluir al Responsable
     c4, c5, c6, c7 = st.columns(4)
     
-    with c4:
-        prov = st.text_input("Proveedor")
-    with c5:
-        fact = st.text_input("N° de Factura")
-    with c6:
-        guia = st.text_input("Guía de Remisión")
-    with c7:
-        resp = st.text_input("Responsable (Recepción)", placeholder="Tu nombre")
+    with c4: prov = st.text_input("Proveedor")
+    with c5: fact = st.text_input("N° de Factura", help="Si lo dejas vacío, el ingreso será Provisional")
+    with c6: guia = st.text_input("Guía de Remisión")
+    with c7: resp = st.text_input("Responsable (Recepción)*", placeholder="Tu nombre")
     
     obs = st.text_area("Observaciones Adicionales", placeholder="Ej: Sacos con humedad, entrega parcial, etc.")
 
@@ -164,14 +190,17 @@ with st.form("form_registro", clear_on_submit=True):
                 st.warning("⚠️ Por favor, indica quién es el responsable de la recepción.")
             else:
                 try:
+                    # 💡 LÓGICA INTELIGENTE: Si no hay factura, es provisional
+                    estado_actual = "Provisional 🔴" if not fact else "Completo 🟢"
+                    
                     nuevo = IngresoSchema(
                         Codigo_Producto=cod_prod, Codigo_Lote=lote, Fecha_Recepcion=fecha_rec,
                         Fecha_Vencimiento=fecha_venc, Cantidad_Ingresada=cant, Precio_Unitario_PEN=p_pen,
                         Proveedor=prov, Factura=fact, Guia_Remision=guia, Observaciones=obs,
-                        Responsable=resp # <-- Se guarda el responsable
+                        Responsable=resp, Estado_Registro=estado_actual
                     )
                     supabase.table('Ingresos').insert(nuevo.model_dump(mode='json')).execute()
-                    st.success("✅ Ingreso registrado correctamente en la base de datos.")
+                    st.success(f"✅ Ingreso registrado como {estado_actual}.")
                     st.cache_data.clear()
                     st.rerun()
                 except Exception as e:
@@ -179,25 +208,65 @@ with st.form("form_registro", clear_on_submit=True):
         else:
             st.error("⚠️ Producto, Lote y Cantidad son campos obligatorios.")
 
-# BOTÓN DE CREACIÓN RÁPIDA (Fuera del formulario principal)
 st.write("")
 col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
-if col_btn2.button("💡 ¿El producto no existe? Crea uno nuevo aquí", use_container_width=True):
-    modal_crear_producto()
+if col_btn2.button("💡 ¿El producto no existe? Crea uno nuevo aquí", use_container_width=True): modal_crear_producto()
 
-# HISTORIAL DINÁMICO
+# --- 6. HISTORIAL Y AUDITORÍA DE MOVIMIENTOS ---
 st.divider()
-st.subheader("📋 Historial de Movimientos")
+st.subheader("📋 Historial de Movimientos y Auditoría")
 df_hist = get_history()
 
 if not df_hist.empty:
-    # 🛡️ Añadimos 'Responsable' a las columnas visibles del historial
-    cols_visibles = ['Fecha_Recepcion', 'Producto', 'Codigo_Lote', 'Cantidad_Ingresada', 'Precio_Unitario_PEN', 'Proveedor', 'Factura', 'Responsable']
+    cols_visibles = ['Estado_Registro', 'Fecha_Recepcion', 'Proveedor', 'Producto', 'Codigo_Lote', 'Cantidad_Ingresada', 'Precio_Unitario_PEN', 'Factura', 'Responsable', 'Motivo_Anulacion']
     cols_reales = [c for c in cols_visibles if c in df_hist.columns]
     
     gb = GridOptionsBuilder.from_dataframe(df_hist[cols_reales])
     gb.configure_pagination(paginationPageSize=10)
     gb.configure_default_column(filterable=True, sortable=True)
-    AgGrid(df_hist[cols_reales], gridOptions=gb.build(), theme='balham', height=400)
+    # 💡 HACEMOS LA TABLA SELECCIONABLE
+    gb.configure_selection('single', use_checkbox=True)
+    
+    grid_res = AgGrid(df_hist[cols_reales], gridOptions=gb.build(), update_mode=GridUpdateMode.SELECTION_CHANGED, theme='balham', height=350)
+    
+    # --- 7. ACCIONES POST-RECEPCIÓN ---
+    selected = grid_res['selected_rows']
+    if selected is not None and not (isinstance(selected, pd.DataFrame) and selected.empty):
+        sel_row = selected.iloc[0] if isinstance(selected, pd.DataFrame) else selected[0]
+        
+        st.write("---")
+        st.markdown(f"**Gestión del Lote seleccionado:** `{sel_row.get('Codigo_Lote', '')}` - {sel_row.get('Producto', '')}")
+        
+        c_acc1, c_acc2 = st.columns(2)
+        
+        # BOTÓN 1: COMPLETAR DATOS (Si es provisional)
+        if sel_row.get('Estado_Registro') == 'Provisional 🔴':
+            with c_acc1.expander("📝 Completar Factura / Precio"):
+                with st.form(f"form_completar_{sel_row.get('id', '')}"):
+                    n_fact = st.text_input("Nueva Factura")
+                    n_precio = st.number_input("Precio Final (S/)", min_value=0.0, value=float(sel_row.get('Precio_Unitario_PEN', 0)))
+                    if st.form_submit_button("Actualizar y Cerrar Registro"):
+                        # Extraemos el ID original cruzando con el dataframe completo
+                        real_id = df_hist[df_hist['Codigo_Lote'] == sel_row['Codigo_Lote']].iloc[0]['id']
+                        supabase.table('Ingresos').update({"Factura": n_fact, "Precio_Unitario_PEN": n_precio, "Estado_Registro": "Completo 🟢"}).eq('id', int(real_id)).execute()
+                        st.success("Registro actualizado.")
+                        st.cache_data.clear()
+                        st.rerun()
+
+        # BOTÓN 2: ANULAR INGRESO (Cero borrados)
+        if sel_row.get('Estado_Registro') != 'ANULADO ❌':
+            with c_acc2.expander("⚠️ Anular Movimiento"):
+                with st.form(f"form_anular_{sel_row.get('id', '')}"):
+                    st.warning("Esto pondrá el stock de este ingreso en cero.")
+                    motivo = st.text_input("Motivo de la anulación (Obligatorio)*")
+                    if st.form_submit_button("Confirmar Anulación"):
+                        if motivo:
+                            real_id = df_hist[df_hist['Codigo_Lote'] == sel_row['Codigo_Lote']].iloc[0]['id']
+                            supabase.table('Ingresos').update({"Cantidad_Ingresada": 0, "Estado_Registro": "ANULADO ❌", "Motivo_Anulacion": motivo}).eq('id', int(real_id)).execute()
+                            st.success("Movimiento anulado por trazabilidad.")
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.error("Debes escribir un motivo para la auditoría.")
 else:
     st.info("No se encontraron registros de ingresos previos.")
