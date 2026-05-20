@@ -8,16 +8,6 @@ from st_aggrid import AgGrid, GridOptionsBuilder, ColumnsAutoSizeMode, GridUpdat
 from streamlit_extras.metric_cards import style_metric_cards
 from streamlit_extras.stylable_container import stylable_container
 
-# 🚨 CANDADO VIP: EXCLUSIVO PARA ALMACÉN
-if "autenticado" not in st.session_state or not st.session_state["autenticado"]:
-    st.warning("⚠️ Por favor, inicie sesión en la página principal.")
-    st.stop()
-
-# Aquí bloqueamos a José de Sanidad o a Edgar de Costos
-if st.session_state["rol"] not in ["Admin", "Logistica","Programador"]:
-    st.error("🚫 Acceso denegado. Este módulo es exclusivo para el área de Almacén y Mezclas (Miguel).")
-    st.stop()
-
 # --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
 st.set_page_config(page_title="Kardex & Inventario Maestro", page_icon="📦", layout="wide")
 
