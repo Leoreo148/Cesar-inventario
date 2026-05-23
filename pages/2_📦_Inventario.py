@@ -127,11 +127,16 @@ with stylable_container(key="green_panel", css_styles="{ background-color: #1e3d
     with c1:
         busqueda = st.text_input("🔍 Buscador:", placeholder="Lote, Producto...")
     with c2:
-        tipos_limpios = sorted([str(t) for t in df_kardex.get('Tipo_Accion', []).unique() if t and str(t) not in ['0', 'nan', 'None']])
+        # 🛡️ FIX: Verificamos que la columna exista y que el DataFrame no esté vacío
+        if 'Tipo_Accion' in df_kardex.columns and not df_kardex.empty:
+            tipos_limpios = sorted([str(t) for t in df_kardex['Tipo_Accion'].unique() if t and str(t) not in ['0', 'nan', 'None']])
+        else:
+            tipos_limpios = []
+            
         filtro_tipo = st.selectbox("Categoría:", ["Todos"] + tipos_limpios)
     with c3:
         filtro_abc = st.selectbox("Clase ABC:", ["Todos", "A (Crítico)", "B (Intermedio)", "C (Rutina)"])
-
+        
     # Fila 2: Filtros Avanzados y KPIs
     with st.expander("🛠️ Filtros Avanzados y Auditoría Logística"):
         ca1, ca2, ca3, ca4 = st.columns(4)
