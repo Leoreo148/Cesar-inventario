@@ -39,7 +39,8 @@ def cargar_catalogos():
         st.error(f"❌ Error en Tabla 'Maquinaria': {e}")
         
     try:
-        d_prod = supabase.table('Productos').select("Codigo, Producto, Unidad").execute().data
+        # 💡 FIX: Traemos Formulacion y Tipo_Accion para alimentar el Motor de Mezclas
+        d_prod = supabase.table('Productos').select("Codigo, Producto, Unidad, Formulacion, Tipo_Accion").execute().data
     except Exception as e:
         st.error(f"❌ Error en Tabla 'Productos': {e}")
         
@@ -71,6 +72,29 @@ def obtener_fefo(df_p, df_i, df_s):
     return pd.merge(df_res[df_res['Stock_Actual'] > 0], df_p, left_on='Codigo_Producto', right_on='Codigo')
 
 df_stock = obtener_fefo(df_prod, df_ing, df_sal)
+
+# --- 🧠 MOTOR INTELIGENTE DE ORDEN DE MEZCLA EN TANQUE ---
+def calcular_orden_mezcla(formulacion, categoria):
+    form = str(formulacion).upper() if pd.notna(formulacion) else ""
+    cat = str(categoria).upper() if pd.notna(categoria) else ""
+
+    if "REGULADOR DE PH" in cat: return 1
+    if "WSB" in form or "HIDROSOLUBLE" in form: return 2
+    if "SG" in form: return 3
+    if "WG" in form or "DISPERSABLE" in form: return 4
+    if "WP" in form or "MOJABLE" in form: return 5
+    if "SC" in form or "SUSPENSIÓN CONCENTRADA" in form: return 6
+    if "CS" in form or "ENCAPSULADA" in form: return 7
+    if "SE" in form or "SUSPOEMULSIÓN" in form: return 8
+    if "OD" in form or "OLEOSA" in form: return 9
+    if "EW" in form or "ACUOSA" in form: return 10
+    if "EC" in form or "EMULSIONABLE" in form: return 11
+    if "COADYUVANTE" in cat or "MOJANTE" in form or "SURFACTANTE" in form: return 12
+    if "SL" in form or "LIQUIDO SOLUBLE" in form: return 13
+    if "FOLIAR" in cat or "ABONO" in cat: return 14
+    if "ANTIDERIVA" in form: return 15
+    
+    return 99 # Si no tiene formulación, va al final del tanque por seguridad
 
 # --- 4. INTERFAZ PRINCIPAL ---
 st.title("🚁 Centro de Mezclas y Despacho")
@@ -143,14 +167,21 @@ with tab1:
                         costo_insumo = row['Cantidad_Total'] * precio_unitario
                         costo_total_mezcla += costo_insumo
                         
+                        # Evaluamos qué orden le toca a este producto específico
+                        rango_mezcla = calcular_orden_mezcla(info.get('Formulacion', ''), info.get('Tipo_Accion', ''))
+                        
                         receta_final.append({
                             "id": int(info['id']), 
                             "p": info['Producto'], 
                             "l": info['Codigo_Lote'], 
                             "c": row['Cantidad_Total'],
                             "precio_u": precio_unitario,
-                            "costo_total": costo_insumo
+                            "costo_total": costo_insumo,
+                            "paso_orden": rango_mezcla # Guardamos el número temporalmente
                         })
+
+                    # 💡 MAGIA PURA: Ordenamos la receta completa basándonos en el paso (del 1 al 15)
+                    receta_final = sorted(receta_final, key=lambda x: x['paso_orden'])
 
                     # Empaquetamos toda la lógica nueva en el JSON de Datos Técnicos
                     categoria_limpia = "Fumigacion" if "FUMIGACIÓN" in tipo_labor else "Fertilizacion"
@@ -166,14 +197,13 @@ with tab1:
                         "Costo_Por_Ha": (costo_total_mezcla/ha_dest) if ha_dest>0 else 0
                     }
 
-                    # Usamos Sector_Aplicacion para guardar la "Parcela" y no alterar la BD original de OTs
                     ot_data = {
                         "ID_Orden_Personalizado": f"OT-{datetime.now().strftime('%y%m%d-%H%M')}",
                         "Status": "En Preparación",
                         "Fecha_Programada": str(f_prog),
                         "Sector_Aplicacion": parcela_dest, 
                         "Objetivo": obj_app,
-                        "Receta_Mezcla_Lotes": receta_final,
+                        "Receta_Mezcla_Lotes": receta_final, # ¡Aquí ya viaja perfectamente ordenada!
                         "Volumen_Hectarea": ha_dest,
                         "Datos_Tecnicos": datos_extra_json
                     }
@@ -200,7 +230,12 @@ with tab2:
                 col_d1, col_d2 = st.columns([3, 1])
                 
                 df_receta = pd.DataFrame(ot['Receta_Mezcla_Lotes'])
-                col_d1.dataframe(df_receta[['p', 'l', 'c']].rename(columns={'p':'Producto', 'l':'Lote', 'c':'Cantidad'}), hide_index=True)
+                
+                # 💡 Creamos una columna visual para indicarle al almacenero el orden estricto (1, 2, 3...)
+                df_receta.insert(0, 'Paso', range(1, 1 + len(df_receta)))
+                
+                col_d1.markdown("🧪 **Orden Estricto de Mezcla en Tanque:**")
+                col_d1.dataframe(df_receta[['Paso', 'p', 'l', 'c']].rename(columns={'p':'Producto', 'l':'Lote', 'c':'Cantidad'}), hide_index=True, use_container_width=True)
                 
                 with col_d2:
                     st.markdown("**Firma de Salida Logística**")
