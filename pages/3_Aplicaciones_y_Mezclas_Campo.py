@@ -232,8 +232,7 @@ with tab2:
                 df_receta = pd.DataFrame(ot['Receta_Mezcla_Lotes'])
                 
                 # 💡 Creamos una columna visual para indicarle al almacenero el orden estricto (1, 2, 3...)
-                df_receta.insert(0, 'Paso', range(1, 1 + len(df_receta)))
-                
+                df_receta.insert(0, 'Ordeb', range(1, 1 + len(df_receta)))                
                 col_d1.markdown("🧪 **Orden Estricto de Mezcla en Tanque:**")
                 col_d1.dataframe(df_receta[['Paso', 'p', 'l', 'c']].rename(columns={'p':'Producto', 'l':'Lote', 'c':'Cantidad'}), hide_index=True, use_container_width=True)
                 
