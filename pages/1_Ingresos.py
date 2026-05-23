@@ -101,7 +101,7 @@ def modal_crear_producto():
         n_tipo = c_mod4.multiselect("Categoría (Puede elegir varias)", CATEGORIAS, placeholder="Ej: Insecticida, Acaricida")
         
         # Formulaciones comunes
-        FORMULACIONES = ["Concentrado Soluble (SL)", "Concentrado Emulsionable (EC)", "Suspensión Concentrada (SC)", "Polvo Mojable (WP)", "Gránulos Dispersables (WG)", "Otro"]
+        FORMULACIONES = ["Reguladores de pH", "Bolsas hidrosolubles (WSB)", "Gránulos solubles (SG)", "Gránulos dispersables (WG)", "Polvos mojables (WP)", "Suspensiones concentradas (SC)", "Suspensiones encapsuladas (CS)", "Suspoemulsiones (SE)", "Suspensiones concentradas oleosas (OD)", "Emulsiones acuosas (EW)", "Emulsiones concentradas (EC)", "Surfactantes / mojantes", "Líquidos solubles (SL)", "Abonos foliares", "Líquidos antideriva"]
         n_form = c_mod5.selectbox("Formulación", FORMULACIONES)
         
         n_uni = c_mod6.selectbox("Unidad Base", ["L", "Kg", "Gal", "Saco"])
