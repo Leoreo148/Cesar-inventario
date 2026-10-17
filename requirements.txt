@@ -1,6 +1,7 @@
 rich>=14.0.0,<15.0.0
 streamlit>=1.30.0
 pandas
+numpy
 scikit-learn
 joblib
 plotly
@@ -12,3 +13,7 @@ pydantic
 streamlit-searchbox
 streamlit-aggrid
 streamlit-extras
+folium
+streamlit-folium
+reportlab
+pymupdf

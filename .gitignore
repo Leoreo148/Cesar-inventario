@@ -1,0 +1,19 @@
+# Secrets and Environment Variables
+.streamlit/secrets.toml
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Audio / temporary media
+*.ogg
+*.mp3
+*.wav
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
