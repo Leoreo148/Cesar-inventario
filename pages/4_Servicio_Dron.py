@@ -84,6 +84,37 @@ with tab_clientes_mapa:
         lista_clientes = df_clientes["nombre"].tolist() if not df_clientes.empty else ["Leonardo"]
         cliente_sel = st.selectbox("🎯 Seleccionar Cliente para ver sus Cultivos y Campos:", options=lista_clientes)
 
+        # Editar o Eliminar el Cliente seleccionado
+        if not df_clientes.empty and cliente_sel in df_clientes["nombre"].values:
+            row_cli_act = df_clientes[df_clientes["nombre"] == cliente_sel].iloc[0]
+            cli_act_id = int(row_cli_act["id"])
+            with st.expander(f"✏️ Editar o 🗑️ Eliminar Cliente: {cliente_sel}", expanded=False):
+                with st.form(f"form_edit_cli_{cli_act_id}"):
+                    ec_nom = st.text_input("Nombre del Cliente", value=str(row_cli_act.get("nombre") or ""))
+                    ec1, ec2 = st.columns(2)
+                    ec_tel = ec1.text_input("Teléfono", value=str(row_cli_act.get("telefono") or ""))
+                    ec_doc = ec2.text_input("DNI / RUC", value=str(row_cli_act.get("ruc_dni") or ""))
+                    ec_zon = st.text_input("Zona / Sector", value=str(row_cli_act.get("zona_sector") or ""))
+                    ec_not = st.text_area("Notas", value=str(row_cli_act.get("notas") or ""), height=60)
+                    b_save_cli, b_del_cli = st.columns(2)
+                    if b_save_cli.form_submit_button("💾 Actualizar Cliente", type="primary", use_container_width=True):
+                        nuevo_nom = ec_nom.strip()
+                        actualizar_registro_seguro(supabase, "Clientes_Dron", cli_act_id, {
+                            "nombre": nuevo_nom,
+                            "telefono": ec_tel.strip(),
+                            "ruc_dni": ec_doc.strip(),
+                            "zona_sector": ec_zon.strip(),
+                            "notas": ec_not.strip(),
+                        })
+                        st.success("Cliente actualizado correctamente.")
+                        st.cache_data.clear()
+                        st.rerun()
+                    if b_del_cli.form_submit_button("🗑️ Borrar Cliente", use_container_width=True):
+                        eliminar_registro_seguro(supabase, "Clientes_Dron", cli_act_id)
+                        st.warning(f"Cliente '{cliente_sel}' eliminado.")
+                        st.cache_data.clear()
+                        st.rerun()
+
         # Filtro de cultivos del cliente seleccionado
         df_campos_cli = df_campos[df_campos["cliente_nombre"] == cliente_sel].copy() if not df_campos.empty else pd.DataFrame()
 
@@ -99,6 +130,7 @@ with tab_clientes_mapa:
 
             st.markdown(f"#### 📍 Campos delimitados de **{cliente_sel}** ({len(df_campos_cli)})")
             for _, row_c in df_campos_cli.iterrows():
+                campo_id_card = int(row_c["id"])
                 lat_c = float(row_c.get("latitud") or -7.2215)
                 lon_c = float(row_c.get("longitud") or -79.4312)
                 gmaps_link = row_c.get("google_maps_url") or construir_url_google_maps(lat_c, lon_c)
@@ -129,6 +161,47 @@ with tab_clientes_mapa:
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
+
+                    with st.expander(f"✏️ Editar o 🗑️ Borrar «{row_c.get('nombre_campo', 'Campo')}»", expanded=False):
+                        with st.form(f"form_edit_campo_{campo_id_card}"):
+                            ed1, ed2, ed3 = st.columns([1.3, 1, 0.9])
+                            ed_nom = ed1.text_input("Nombre del Campo", value=str(row_c.get("nombre_campo") or ""))
+                            cult_actual = str(row_c.get("cultivo") or "Palto")
+                            ed_cul = ed2.selectbox(
+                                "Cultivo",
+                                options=CULTIVOS_FRECUENTES,
+                                index=CULTIVOS_FRECUENTES.index(cult_actual) if cult_actual in CULTIVOS_FRECUENTES else 0
+                            )
+                            ed_ha = ed3.number_input("Área (ha)", min_value=0.05, value=float(row_c.get("area_ha") or 1.0), step=0.25, format="%.2f")
+
+                            ed4, ed5, ed6 = st.columns(3)
+                            ed_per = ed4.number_input("Perímetro (m)", min_value=0.0, value=float(row_c.get("perimetro_m") or 0.0), step=10.0, format="%.1f")
+                            ed_lat = ed5.number_input("Latitud GPS", value=lat_c, format="%.6f")
+                            ed_lon = ed6.number_input("Longitud GPS", value=lon_c, format="%.6f")
+
+                            ed_obs = st.text_input("Observaciones", value=str(row_c.get("observaciones") or ""))
+
+                            btn_col1, btn_col2 = st.columns(2)
+                            if btn_col1.form_submit_button("💾 Guardar Cambios", type="primary", use_container_width=True):
+                                actualizar_registro_seguro(supabase, "Campos_Clientes_Dron", campo_id_card, {
+                                    "nombre_campo": ed_nom.strip(),
+                                    "cultivo": ed_cul,
+                                    "area_ha": float(ed_ha),
+                                    "perimetro_m": float(ed_per),
+                                    "latitud": float(ed_lat),
+                                    "longitud": float(ed_lon),
+                                    "google_maps_url": construir_url_google_maps(float(ed_lat), float(ed_lon)),
+                                    "observaciones": ed_obs.strip()
+                                })
+                                st.success(f"Campo '{ed_nom}' actualizado.")
+                                st.cache_data.clear()
+                                st.rerun()
+
+                            if btn_col2.form_submit_button("🗑️ Borrar Campo", use_container_width=True):
+                                eliminar_registro_seguro(supabase, "Campos_Clientes_Dron", campo_id_card)
+                                st.warning(f"Campo '{row_c.get('nombre_campo')}' eliminado.")
+                                st.cache_data.clear()
+                                st.rerun()
         else:
             st.info(f"El cliente **{cliente_sel}** aún no tiene campos delimitados. Dibuja su polígono en el mapa de la derecha para agregarlo.")
 
@@ -503,14 +576,16 @@ with tab_reportes_pdf:
                         st.info("El PDF está listo para descargarse con el botón superior.")
 
             with col_status_upd:
-                st.markdown("#### 💳 Actualizar Estado de Pago Rápido")
+                st.markdown("#### ✏️ Editar / Cobrar / Borrar Servicio")
                 id_actualizar = st.selectbox(
                     "Seleccionar Servicio (ID):",
                     options=df_rep["id"].tolist(),
                     format_func=lambda x: f"ID #{x} - {df_rep[df_rep['id']==x].iloc[0]['cliente_nombre']} ({df_rep[df_rep['id']==x].iloc[0]['cultivo']} - S/ {float(df_rep[df_rep['id']==x].iloc[0]['total_cobrar_pen']):.2f})"
                 )
-                if st.button("✅ Marcar como PAGADO al 100%", use_container_width=True):
-                    fila_s = df_rep[df_rep["id"] == id_actualizar].iloc[0]
+                fila_s = df_rep[df_rep["id"] == id_actualizar].iloc[0]
+
+                b_quick1, b_quick2 = st.columns(2)
+                if b_quick1.button("✅ Marcar PAGADO 100%", use_container_width=True):
                     actualizar_registro_seguro(supabase, "Servicios_Dron", int(id_actualizar), {
                         "estado_pago": "Pagado",
                         "monto_pagado_pen": float(fila_s["total_cobrar_pen"])
@@ -518,3 +593,33 @@ with tab_reportes_pdf:
                     st.success(f"Servicio #{id_actualizar} actualizado a Pagado.")
                     st.cache_data.clear()
                     st.rerun()
+
+                if b_quick2.button("🗑️ Borrar Servicio", use_container_width=True):
+                    eliminar_registro_seguro(supabase, "Servicios_Dron", int(id_actualizar))
+                    st.warning(f"Servicio #{id_actualizar} eliminado.")
+                    st.cache_data.clear()
+                    st.rerun()
+
+                with st.expander(f"✏️ Editar datos del Servicio #{id_actualizar}", expanded=False):
+                    with st.form(f"form_edit_srv_{id_actualizar}"):
+                        es1, es2 = st.columns(2)
+                        es_ha = es1.number_input("Hectáreas (ha)", min_value=0.1, value=float(fila_s.get("hectareas_aplicadas") or 1.0), step=0.25)
+                        es_pr = es2.number_input("Precio / ha (S/)", min_value=1.0, value=float(fila_s.get("precio_por_ha_pen") or 60.0), step=5.0)
+                        es3, es4 = st.columns(2)
+                        est_act = str(fila_s.get("estado_pago") or "Pendiente")
+                        es_est = es3.selectbox("Estado", options=["Pendiente", "Pagado", "Parcial"], index=["Pendiente", "Pagado", "Parcial"].index(est_act) if est_act in ["Pendiente", "Pagado", "Parcial"] else 0)
+                        es_pag = es4.number_input("Monto Abonado (S/)", min_value=0.0, value=float(fila_s.get("monto_pagado_pen") or 0.0), step=10.0)
+                        es_obs = st.text_input("Observaciones", value=str(fila_s.get("observaciones") or ""))
+                        if st.form_submit_button("💾 Guardar Cambios del Servicio", type="primary", use_container_width=True):
+                            nuevo_tot = round(float(es_ha) * float(es_pr), 2)
+                            actualizar_registro_seguro(supabase, "Servicios_Dron", int(id_actualizar), {
+                                "hectareas_aplicadas": float(es_ha),
+                                "precio_por_ha_pen": float(es_pr),
+                                "total_cobrar_pen": nuevo_tot,
+                                "estado_pago": es_est,
+                                "monto_pagado_pen": nuevo_tot if es_est == "Pagado" else float(es_pag),
+                                "observaciones": es_obs.strip()
+                            })
+                            st.success(f"Servicio #{id_actualizar} actualizado.")
+                            st.cache_data.clear()
+                            st.rerun()

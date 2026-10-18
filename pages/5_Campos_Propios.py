@@ -14,6 +14,8 @@ from utils_cesar import (
     calcular_geometria_poligono,
     cargar_tabla_segura,
     insertar_registro_seguro,
+    actualizar_registro_seguro,
+    eliminar_registro_seguro,
     mostrar_aviso_sql_si_local,
 )
 
@@ -91,7 +93,9 @@ with col_sel:
     area_lote_ha = float(row_lote.get("area_ha", 1.0))
     cultivo_lote = str(row_lote.get("cultivo_actual", "Arroz"))
     campo_id_activo = int(row_lote.get("id", 1))
-    gmaps_lote = row_lote.get("google_maps_url") or construir_url_google_maps(float(row_lote.get("latitud") or -7.219), float(row_lote.get("longitud") or -79.435))
+    lat_cp = float(row_lote.get("latitud") or -7.219)
+    lon_cp = float(row_lote.get("longitud") or -79.435)
+    gmaps_lote = row_lote.get("google_maps_url") or construir_url_google_maps(lat_cp, lon_cp)
 
     st.markdown(f"""
     <div class="field-card">
@@ -113,6 +117,42 @@ with col_sel:
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    with st.expander(f"✏️ Editar o 🗑️ Borrar Campo Propio: «{lote_activo}»", expanded=False):
+        with st.form(f"form_edit_cp_{campo_id_activo}"):
+            ecp1, ecp2, ecp3 = st.columns([1.3, 1, 0.8])
+            ecp_nom = ecp1.text_input("Nombre del Lote", value=lote_activo)
+            ecp_cul = ecp2.selectbox(
+                "Cultivo Actual",
+                options=CULTIVOS_FRECUENTES,
+                index=CULTIVOS_FRECUENTES.index(cultivo_lote) if cultivo_lote in CULTIVOS_FRECUENTES else 0
+            )
+            ecp_ha = ecp3.number_input("Área (ha)", min_value=0.1, value=area_lote_ha, step=0.25, format="%.2f")
+            ecp4, ecp5, ecp6 = st.columns(3)
+            ecp_var = ecp4.text_input("Variedad", value=str(row_lote.get("variedad") or ""))
+            ecp_lat = ecp5.number_input("Latitud GPS", value=lat_cp, format="%.6f")
+            ecp_lon = ecp6.number_input("Longitud GPS", value=lon_cp, format="%.6f")
+            ecp_obs = st.text_input("Observaciones", value=str(row_lote.get("observaciones") or ""))
+            b_cp1, b_cp2 = st.columns(2)
+            if b_cp1.form_submit_button("💾 Guardar Cambios del Campo", type="primary", use_container_width=True):
+                actualizar_registro_seguro(supabase, "Campos_Propios", campo_id_activo, {
+                    "nombre_lote": ecp_nom.strip(),
+                    "cultivo_actual": ecp_cul,
+                    "variedad": ecp_var.strip(),
+                    "area_ha": float(ecp_ha),
+                    "latitud": float(ecp_lat),
+                    "longitud": float(ecp_lon),
+                    "google_maps_url": construir_url_google_maps(float(ecp_lat), float(ecp_lon)),
+                    "observaciones": ecp_obs.strip()
+                })
+                st.success("Campo propio actualizado.")
+                st.cache_data.clear()
+                st.rerun()
+            if b_cp2.form_submit_button("🗑️ Borrar Campo Propio", use_container_width=True):
+                eliminar_registro_seguro(supabase, "Campos_Propios", campo_id_activo)
+                st.warning(f"Campo '{lote_activo}' eliminado.")
+                st.cache_data.clear()
+                st.rerun()
 
 # Filtrar historial del campo seleccionado
 df_hist_lote = df_historial[df_historial["nombre_lote"] == lote_activo].copy() if not df_historial.empty else pd.DataFrame()
@@ -230,6 +270,34 @@ with tab_fertilizantes:
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
+                rf_id = int(rf["id"])
+                with st.expander(f"✏️ Editar o 🗑️ Borrar — {rf.get('etapa_labor')} ({rf.get('fecha')})"):
+                    ef1, ef2 = st.columns(2)
+                    ef_etapa = ef1.text_input("Etapa", value=str(rf.get("etapa_labor", "")), key=f"ef_et_{rf_id}")
+                    ef_dosis = ef2.text_input("Dosis/ha", value=str(rf.get("dosis_por_ha", "")), key=f"ef_do_{rf_id}")
+                    ef_prods = st.text_area("Fertilizantes", value=str(rf.get("productos_detalle", "")), key=f"ef_pr_{rf_id}", height=68)
+                    ef3, ef4, ef5 = st.columns(3)
+                    ef_cant = ef3.number_input("Cantidad Total", min_value=0.0, value=float(rf.get("cantidad_total") or 0.0), step=1.0, key=f"ef_ca_{rf_id}")
+                    ef_costo = ef4.number_input("Costo Total (S/)", min_value=0.0, value=float(rf.get("costo_total_pen") or 0.0), step=10.0, key=f"ef_co_{rf_id}")
+                    ef_obs = ef5.text_input("Observaciones", value=str(rf.get("observaciones") or ""), key=f"ef_ob_{rf_id}")
+                    bf1, bf2 = st.columns(2)
+                    if bf1.button("💾 Guardar Cambios", key=f"save_rf_{rf_id}", type="primary", use_container_width=True):
+                        if actualizar_registro_seguro(supabase, "Historial_Campos_Propios", rf_id, {
+                            "etapa_labor": ef_etapa.strip(),
+                            "dosis_por_ha": ef_dosis.strip(),
+                            "productos_detalle": ef_prods.strip(),
+                            "cantidad_total": float(ef_cant),
+                            "costo_total_pen": float(ef_costo),
+                            "observaciones": ef_obs.strip()
+                        }):
+                            st.success("Registro de fertilización actualizado.")
+                            st.cache_data.clear()
+                            st.rerun()
+                    if bf2.button("🗑️ Borrar Registro", key=f"del_rf_{rf_id}", use_container_width=True):
+                        if eliminar_registro_seguro(supabase, "Historial_Campos_Propios", rf_id):
+                            st.warning("Registro de fertilización eliminado.")
+                            st.cache_data.clear()
+                            st.rerun()
 
 # ------------------------------------------------------------------------------
 # SECCIÓN 2: APLICACIONES (DRON / INSECTICIDAS / AGROQUÍMICOS)
@@ -312,6 +380,32 @@ with tab_aplicaciones:
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
+                ra_id = int(ra["id"])
+                with st.expander(f"✏️ Editar o 🗑️ Borrar — {ra.get('etapa_labor')} ({ra.get('fecha')})"):
+                    ea1, ea2 = st.columns(2)
+                    ea_etapa = ea1.text_input("Objetivo / Etapa", value=str(ra.get("etapa_labor", "")), key=f"ea_et_{ra_id}")
+                    ea_dosis = ea2.text_input("Dosis / Caldo", value=str(ra.get("dosis_por_ha", "")), key=f"ea_do_{ra_id}")
+                    ea_prods = st.text_area("Agroquímicos", value=str(ra.get("productos_detalle", "")), key=f"ea_pr_{ra_id}", height=68)
+                    ea3, ea4 = st.columns(2)
+                    ea_costo = ea3.number_input("Costo Estimado (S/)", min_value=0.0, value=float(ra.get("costo_total_pen") or 0.0), step=10.0, key=f"ea_co_{ra_id}")
+                    ea_obs = ea4.text_input("Observaciones", value=str(ra.get("observaciones") or ""), key=f"ea_ob_{ra_id}")
+                    ba1, ba2 = st.columns(2)
+                    if ba1.button("💾 Guardar Cambios", key=f"save_ra_{ra_id}", type="primary", use_container_width=True):
+                        if actualizar_registro_seguro(supabase, "Historial_Campos_Propios", ra_id, {
+                            "etapa_labor": ea_etapa.strip(),
+                            "dosis_por_ha": ea_dosis.strip(),
+                            "productos_detalle": ea_prods.strip(),
+                            "costo_total_pen": float(ea_costo),
+                            "observaciones": ea_obs.strip()
+                        }):
+                            st.success("Aplicación actualizada.")
+                            st.cache_data.clear()
+                            st.rerun()
+                    if ba2.button("🗑️ Borrar Registro", key=f"del_ra_{ra_id}", use_container_width=True):
+                        if eliminar_registro_seguro(supabase, "Historial_Campos_Propios", ra_id):
+                            st.warning("Aplicación eliminada.")
+                            st.cache_data.clear()
+                            st.rerun()
 
 # ------------------------------------------------------------------------------
 # SECCIÓN 3: EXTRAS (SIEMBRA, SEMILLA, TRASPLANTE, QUEMA DE HIERBA, DEFICIENCIA DE AGUA)
@@ -413,3 +507,30 @@ with tab_extras:
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
+                re_id = int(re_row["id"])
+                with st.expander(f"✏️ Editar o 🗑️ Borrar — {re_row.get('etapa_labor')} ({re_row.get('fecha')})"):
+                    ee1, ee2 = st.columns(2)
+                    ee_etapa = ee1.text_input("Labor / Tipo", value=str(re_row.get("etapa_labor", "")), key=f"ee_et_{re_id}")
+                    ee_alerta = ee2.text_input("Estado / Alerta", value=str(re_row.get("alerta_campo", "Normal 🟢")), key=f"ee_al_{re_id}")
+                    ee_prods = st.text_area("Detalle", value=str(re_row.get("productos_detalle", "")), key=f"ee_pr_{re_id}", height=68)
+                    ee3, ee4 = st.columns(2)
+                    ee_costo = ee3.number_input("Gasto Asociado (S/)", min_value=0.0, value=float(re_row.get("costo_total_pen") or 0.0), step=10.0, key=f"ee_co_{re_id}")
+                    ee_obs = ee4.text_input("Nota Adicional", value=str(re_row.get("observaciones") or ""), key=f"ee_ob_{re_id}")
+                    be1, be2 = st.columns(2)
+                    if be1.button("💾 Guardar Cambios", key=f"save_re_{re_id}", type="primary", use_container_width=True):
+                        if actualizar_registro_seguro(supabase, "Historial_Campos_Propios", re_id, {
+                            "etapa_labor": ee_etapa.strip(),
+                            "alerta_campo": ee_alerta.strip(),
+                            "productos_detalle": ee_prods.strip(),
+                            "costo_total_pen": float(ee_costo),
+                            "observaciones": ee_obs.strip()
+                        }):
+                            st.success("Evento extra actualizado.")
+                            st.cache_data.clear()
+                            st.rerun()
+                    if be2.button("🗑️ Borrar Registro", key=f"del_re_{re_id}", use_container_width=True):
+                        if eliminar_registro_seguro(supabase, "Historial_Campos_Propios", re_id):
+                            st.warning("Evento extra eliminado.")
+                            st.cache_data.clear()
+                            st.rerun()
+
