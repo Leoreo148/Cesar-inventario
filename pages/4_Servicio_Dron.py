@@ -111,13 +111,13 @@ with tab_clientes_mapa:
                                 <span style="background:#DCFCE7; color:#14532D; padding:3px 10px; border-radius:99px; font-weight:700; font-size:0.8rem;">
                                     🌱 {row_c.get('cultivo', 'Cultivo')}
                                 </span>
-                                <h4 style="margin:6px 0 2px 0; color:#0F172A;">{row_c.get('nombre_campo', 'Campo')}</h4>
-                                <p style="margin:0; font-size:0.86rem; color:#475569;" class="tabular-nums">
+                                <h4 style="margin:6px 0 2px 0;">{row_c.get('nombre_campo', 'Campo')}</h4>
+                                <p style="margin:0; font-size:0.86rem;" class="tabular-nums">
                                     📐 <b>Área:</b> {float(row_c.get('area_ha', 0)):.2f} ha &nbsp;|&nbsp;
                                     📏 <b>Perímetro:</b> {float(row_c.get('perimetro_m', 0)):,.0f} m &nbsp;|&nbsp;
                                     🧭 <b>GPS:</b> {lat_c:.5f}, {lon_c:.5f}
                                 </p>
-                                <p style="margin:4px 0 0 0; font-size:0.82rem; color:#64748B;">
+                                <p class="muted-text" style="margin:4px 0 0 0;">
                                     {row_c.get('observaciones') or 'Sin observaciones de vuelo.'}
                                 </p>
                             </div>

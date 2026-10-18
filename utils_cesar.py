@@ -49,7 +49,7 @@ def init_supabase():
         pass
     return None
 
-# --- 2. SISTEMA DE DISEÑO (UI/UX PRO MAX + IMPECCABLE) ---
+# --- 2. SISTEMA DE DISEÑO ADAPTATIVO (LIGHT & DARK MODE COMPATIBLE) ---
 def apply_cesar_theme():
     st.markdown("""
         <style>
@@ -57,10 +57,6 @@ def apply_cesar_theme():
 
         html, body, [class*="css"] {
             font-family: 'Fira Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            color: #14532D;
-        }
-        .stApp {
-            background-color: #F8FAF9;
         }
         /* Tabular numerals for metrics and financial data */
         div[data-testid="stMetricValue"], table, .tabular-nums {
@@ -68,35 +64,38 @@ def apply_cesar_theme():
             font-variant-numeric: tabular-nums;
         }
         div[data-testid="stMetric"] {
-            background-color: #FFFFFF;
-            border: 1px solid #BBF7D0;
-            padding: 16px 18px;
-            border-radius: 14px;
-            box-shadow: 0 2px 8px rgba(20, 83, 45, 0.05);
+            background-color: var(--secondary-background-color) !important;
+            border: 1px solid rgba(34, 197, 94, 0.35) !important;
+            border-left: 4px solid #16A34A !important;
+            padding: 16px 18px !important;
+            border-radius: 14px !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
         }
-        div[data-testid="stMetricLabel"] {
-            color: #475569;
-            font-weight: 600;
-            font-size: 0.88rem;
+        div[data-testid="stMetricLabel"], div[data-testid="stMetricLabel"] p {
+            color: var(--text-color) !important;
+            opacity: 0.85;
+            font-weight: 600 !important;
+            font-size: 0.9rem !important;
         }
         div[data-testid="stMetricValue"] {
-            color: #14532D;
-            font-weight: 700;
+            color: #22C55E !important;
+            font-weight: 700 !important;
         }
         div[data-testid="stForm"] {
-            background-color: #FFFFFF;
-            border-radius: 16px;
-            padding: 22px;
-            border: 1px solid #DCFCE7;
-            box-shadow: 0 4px 12px rgba(20, 83, 45, 0.04);
+            background-color: var(--secondary-background-color) !important;
+            border-radius: 16px !important;
+            padding: 22px !important;
+            border: 1px solid rgba(34, 197, 94, 0.28) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
         }
         .cesar-header {
-            background: #14532D;
-            color: #FFFFFF;
+            background: linear-gradient(135deg, #14532D 0%, #1e3d33 100%);
+            color: #FFFFFF !important;
             padding: 1.5rem 1.8rem;
             border-radius: 16px;
             margin-bottom: 1.2rem;
-            box-shadow: 0 6px 16px rgba(20, 83, 45, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
         }
         .cesar-header h1 {
             color: #FFFFFF !important;
@@ -106,7 +105,7 @@ def apply_cesar_theme():
             letter-spacing: -0.02em;
         }
         .cesar-header p {
-            color: #DCFCE7;
+            color: #DCFCE7 !important;
             margin: 0;
             font-size: 0.95rem;
         }
@@ -114,7 +113,7 @@ def apply_cesar_theme():
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background-color: #15803D;
+            background-color: #16A34A;
             color: #FFFFFF !important;
             padding: 10px 16px;
             border-radius: 10px;
@@ -123,19 +122,45 @@ def apply_cesar_theme():
             font-size: 0.9rem;
             min-height: 44px;
             transition: background-color 0.2s ease, transform 0.15s ease;
-            box-shadow: 0 2px 6px rgba(21, 128, 61, 0.2);
+            box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
         }
         .gps-btn:hover {
-            background-color: #166534;
+            background-color: #15803D;
             transform: translateY(-1px);
         }
         .field-card {
-            background: #FFFFFF;
-            border: 1px solid #DCFCE7;
+            background-color: var(--secondary-background-color) !important;
+            color: var(--text-color) !important;
+            border: 1px solid rgba(34, 197, 94, 0.3) !important;
             border-radius: 14px;
             padding: 16px;
             margin-bottom: 12px;
-            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+        .field-card h3, .field-card h4 {
+            color: var(--text-color) !important;
+            margin: 6px 0 4px 0;
+        }
+        .field-card p {
+            color: var(--text-color) !important;
+            opacity: 0.9;
+        }
+        .field-card .muted-text {
+            color: var(--text-color) !important;
+            opacity: 0.7;
+            font-size: 0.83rem;
+        }
+        .legend-box {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+            background-color: var(--secondary-background-color);
+            color: var(--text-color);
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(34, 197, 94, 0.3);
         }
         </style>
     """, unsafe_allow_html=True)

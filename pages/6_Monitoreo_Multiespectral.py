@@ -191,7 +191,7 @@ with col_mapa:
     st_folium(m_ndvi, width=None, height=410, returned_objects=[])
 
     st.markdown("""
-    <div style="display:flex; gap:18px; align-items:center; font-size:0.85rem; background:#FFFFFF; padding:10px 14px; border-radius:10px; border:1px solid #DCFCE7;">
+    <div class="legend-box">
         <b>Leyenda Espectral:</b>
         <span>🟢 <b>> 0.68:</b> Vigor Alto / Sanidad Óptima</span>
         <span>🟡 <b>0.50 – 0.68:</b> Vigor Moderado / Transición</span>
@@ -222,15 +222,15 @@ with col_graf:
         height=230
     )
     fig_bar.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
-    fig_bar.update_layout(showlegend=False, margin=dict(l=10, r=35, t=10, b=10), plot_bgcolor="#FFFFFF")
+    fig_bar.update_layout(showlegend=False, margin=dict(l=10, r=35, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig_bar, use_container_width=True)
 
     st.markdown(f"""
     <div class="field-card">
-        <h4 style="margin:0 0 6px 0; color:#14532D;">🩺 Diagnóstico Agronómico Actual</h4>
-        <p style="margin:0 0 10px 0; font-size:0.9rem; color:#1E293B;">{diag_txt}</p>
-        <h4 style="margin:0 0 6px 0; color:#A16207;">🚁 Prescripción para Vuelo de Dron</h4>
-        <p style="margin:0; font-size:0.9rem; color:#1E293B;">{rec_txt}</p>
+        <h4 style="margin:0 0 6px 0; color:#22C55E !important;">🩺 Diagnóstico Agronómico Actual</h4>
+        <p style="margin:0 0 10px 0; font-size:0.9rem;">{diag_txt}</p>
+        <h4 style="margin:0 0 6px 0; color:#EAB308 !important;">🚁 Prescripción para Vuelo de Dron</h4>
+        <p style="margin:0; font-size:0.9rem;">{rec_txt}</p>
     </div>
     """, unsafe_allow_html=True)
 

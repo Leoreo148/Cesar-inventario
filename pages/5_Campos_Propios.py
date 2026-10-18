@@ -100,8 +100,8 @@ with col_sel:
                 <span style="background:#DCFCE7; color:#14532D; padding:4px 12px; border-radius:99px; font-weight:700; font-size:0.82rem;">
                     🌱 Cultivo: {cultivo_lote} ({row_lote.get('variedad') or 'Estándar'}) — {row_lote.get('estado', 'En Campaña')}
                 </span>
-                <h3 style="margin:6px 0 4px 0; color:#0F172A;">{lote_activo}</h3>
-                <p style="margin:0; font-size:0.88rem; color:#475569;" class="tabular-nums">
+                <h3 style="margin:6px 0 4px 0;">{lote_activo}</h3>
+                <p style="margin:0; font-size:0.88rem;" class="tabular-nums">
                     📐 <b>Área:</b> {area_lote_ha:.2f} ha &nbsp;|&nbsp;
                     🗓️ <b>Siembra:</b> {row_lote.get('fecha_siembra', '—')} &nbsp;|&nbsp;
                     🌿 <b>Trasplante:</b> {row_lote.get('fecha_trasplante', '—')}
@@ -213,19 +213,19 @@ with tab_fertilizantes:
                         <span style="background:#DCFCE7; color:#14532D; padding:3px 10px; border-radius:99px; font-weight:700; font-size:0.8rem;">
                             🧪 {rf.get('etapa_labor')}
                         </span>
-                        <span class="tabular-nums" style="font-size:0.85rem; color:#475569; font-weight:600;">
+                        <span class="tabular-nums" style="font-size:0.85rem; font-weight:600;">
                             📅 {rf.get('fecha')} &nbsp;|&nbsp; 💰 S/ {float(rf.get('costo_total_pen', 0)):,.2f}
                         </span>
                     </div>
-                    <p style="margin:8px 0 4px 0; font-weight:600; color:#0F172A;">
+                    <p style="margin:8px 0 4px 0; font-weight:600;">
                         Fertilizantes: {rf.get('productos_detalle')}
                     </p>
-                    <p style="margin:0; font-size:0.86rem; color:#334155;" class="tabular-nums">
+                    <p style="margin:0; font-size:0.86rem;" class="tabular-nums">
                         ⚖️ <b>Dosis/ha:</b> {rf.get('dosis_por_ha') or '—'} &nbsp;|&nbsp;
                         📦 <b>Total Lote:</b> {float(rf.get('cantidad_total', 0)):,.1f} {rf.get('unidad', '')} &nbsp;|&nbsp;
                         🚜 <b>Método:</b> {rf.get('metodo_equipo', '')}
                     </p>
-                    <p style="margin:4px 0 0 0; font-size:0.82rem; color:#64748B;">
+                    <p class="muted-text" style="margin:4px 0 0 0;">
                         {rf.get('observaciones') or ''}
                     </p>
                 </div>
@@ -296,18 +296,18 @@ with tab_aplicaciones:
                         <span style="background:#E0F2FE; color:#0369A1; padding:3px 10px; border-radius:99px; font-weight:700; font-size:0.8rem;">
                             🚁 {ra.get('etapa_labor')}
                         </span>
-                        <span class="tabular-nums" style="font-size:0.85rem; color:#475569; font-weight:600;">
+                        <span class="tabular-nums" style="font-size:0.85rem; font-weight:600;">
                             📅 {ra.get('fecha')} &nbsp;|&nbsp; 💰 S/ {float(ra.get('costo_total_pen', 0)):,.2f}
                         </span>
                     </div>
-                    <p style="margin:8px 0 4px 0; font-weight:600; color:#0F172A;">
+                    <p style="margin:8px 0 4px 0; font-weight:600;">
                         Agroquímicos: {ra.get('productos_detalle')}
                     </p>
-                    <p style="margin:0; font-size:0.86rem; color:#334155;" class="tabular-nums">
+                    <p style="margin:0; font-size:0.86rem;" class="tabular-nums">
                         💧 <b>Dosis / Caldo:</b> {ra.get('dosis_por_ha') or '—'} &nbsp;|&nbsp;
                         🚁 <b>Equipo:</b> {ra.get('metodo_equipo', '')}
                     </p>
-                    <p style="margin:4px 0 0 0; font-size:0.82rem; color:#64748B;">
+                    <p class="muted-text" style="margin:4px 0 0 0;">
                         {ra.get('observaciones') or ''}
                     </p>
                 </div>
@@ -394,20 +394,20 @@ with tab_extras:
                 st.markdown(f"""
                 <div class="field-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-                        <span style="background:#F1F5F9; color:#0F172A; padding:3px 10px; border-radius:99px; font-weight:700; font-size:0.8rem;">
+                        <span style="background:#DCFCE7; color:#14532D; padding:3px 10px; border-radius:99px; font-weight:700; font-size:0.8rem;">
                             {re_row.get('etapa_labor')}
                         </span>
                         <span style="background:{bg_badge}; color:{col_badge}; padding:3px 10px; border-radius:99px; font-weight:700; font-size:0.78rem;">
                             Estado: {alerta_str}
                         </span>
-                        <span class="tabular-nums" style="font-size:0.85rem; color:#475569; font-weight:600;">
+                        <span class="tabular-nums" style="font-size:0.85rem; font-weight:600;">
                             📅 {re_row.get('fecha')} &nbsp;|&nbsp; 💰 S/ {float(re_row.get('costo_total_pen', 0)):,.2f}
                         </span>
                     </div>
-                    <p style="margin:8px 0 4px 0; font-weight:600; color:#0F172A;">
+                    <p style="margin:8px 0 4px 0; font-weight:600;">
                         {re_row.get('productos_detalle')}
                     </p>
-                    <p style="margin:0; font-size:0.84rem; color:#475569;">
+                    <p style="margin:0; font-size:0.84rem;">
                         📌 <b>Indicador/Semilla:</b> {re_row.get('dosis_por_ha') or '—'} &nbsp;|&nbsp;
                         <b>Nota:</b> {re_row.get('observaciones') or '—'}
                     </p>

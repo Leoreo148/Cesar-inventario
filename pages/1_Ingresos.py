@@ -7,22 +7,11 @@ from supabase import create_client
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from streamlit_extras.stylable_container import stylable_container
 
+from utils_cesar import apply_cesar_theme
+
 # --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
 st.set_page_config(page_title="Gestión de Ingresos Pro", page_icon="📥", layout="wide")
-
-st.markdown("""
-    <style>
-    .stApp { background-color: #f4f7f6; }
-    .stHeader { background-color: #1e3d33; }
-    div[data-testid="stForm"] {
-        background-color: #ffffff;
-        border-radius: 15px;
-        padding: 20px;
-        border: 1px solid #e0e0e0;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-    </style>
-    """, unsafe_allow_html=True)
+apply_cesar_theme()
 
 # --- 2. ESQUEMA DE DATOS AUDITADO ---
 class IngresoSchema(BaseModel):

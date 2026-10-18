@@ -8,20 +8,11 @@ from st_aggrid import AgGrid, GridOptionsBuilder, ColumnsAutoSizeMode, GridUpdat
 from streamlit_extras.metric_cards import style_metric_cards
 from streamlit_extras.stylable_container import stylable_container
 
+from utils_cesar import apply_cesar_theme
+
 # --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
 st.set_page_config(page_title="Kardex & Inventario Maestro", page_icon="📦", layout="wide")
-
-st.markdown("""
-    <style>
-    .stApp { background-color: #f8f9fa; }
-    div[data-testid="stMetric"] {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        padding: 15px;
-        border-radius: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+apply_cesar_theme()
 
 if 'editing_product_id' not in st.session_state:
     st.session_state.editing_product_id = None
@@ -199,8 +190,6 @@ st.write("")
 c_tc, m1, m2, m3, m4 = st.columns([1.5, 2, 1.5, 1.5, 1.5])
 tc_usd = c_tc.number_input("💵 Tipo de Cambio (S/)", min_value=3.00, max_value=4.50, value=3.75, step=0.01)
 
-style_metric_cards(background_color="#ffffff", border_left_color="#1e3d33")
-
 val_total_pen = df_kardex['Valorizado_PEN'].sum() if 'Valorizado_PEN' in df_kardex.columns else 0.0
 val_total_usd = val_total_pen / tc_usd if tc_usd > 0 else 0.0
 
@@ -274,7 +263,7 @@ if not df_kardex.empty:
         
         # 3. PANEL DE OBSERVACIONES Y SEGURIDAD
         with c_acc3:
-            with stylable_container("obs", css_styles="{ background-color: #e8f4fd; padding: 10px; border-radius: 8px; border: 1px solid #b3d7ff;}"):
+            with stylable_container("obs", css_styles="{ background-color: var(--secondary-background-color); color: var(--text-color); padding: 12px; border-radius: 10px; border: 1px solid rgba(34, 197, 94, 0.35);}"):
                 if len(selected_records) == 1:
                     row_data = selected_records[0]
                     # Filtro Anti-None

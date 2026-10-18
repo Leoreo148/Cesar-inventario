@@ -3,16 +3,12 @@ import pandas as pd
 from datetime import datetime, date
 from supabase import create_client
 
+from utils_cesar import apply_cesar_theme
+
 # --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
 st.set_page_config(page_title="Gestión de Aplicaciones - Fundo", page_icon="🚁", layout="wide")
-
-st.markdown("""
-    <style>
-    .stApp { background-color: #f8f9fa; }
-    .seccion-titulo { color: #1e3d33; font-weight: 600; margin-top: 15px; border-bottom: 2px solid #2ecc71; padding-bottom: 5px;}
-    div[data-testid="stMetric"] { background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    </style>
-    """, unsafe_allow_html=True)
+apply_cesar_theme()
+st.markdown("<style>.seccion-titulo { color: #22C55E; font-weight: 600; margin-top: 15px; border-bottom: 2px solid #2ecc71; padding-bottom: 5px;}</style>", unsafe_allow_html=True)
 
 # --- 2. CONEXIÓN ---
 @st.cache_resource
